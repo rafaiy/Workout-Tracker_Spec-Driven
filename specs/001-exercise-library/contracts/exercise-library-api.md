@@ -1,94 +1,73 @@
-# Exercise Library REST Contract
+# GymFlow REST Contract
 
-Authentication is required for every endpoint. Responses use a consistent error shape and HTTP status codes 400, 401, 403, 404, and 500 as applicable.
+Authentication is required for every endpoint. Responses use a shared error envelope and 400, 401, 403, 404, 409, and 500 status codes as applicable.
 
-## List and Search Exercises
+## Exercise Endpoints
 
-**GET /api/exercises**
+**GET /api/v1/exercises**
 
-Query parameters:
-- `search`: optional partial exercise name
-- `muscleGroups`: optional repeated or comma-separated muscle-group values
-- `equipment`: optional repeated or comma-separated curated values
-- `difficulty`: optional repeated or comma-separated values
-- `favorites`: optional boolean
-- `page`: optional positive integer
-- `pageSize`: optional positive integer
+Supports search, repeated filters, Favorites, and pagination.
 
-Response: Paginated accessible exercises: predefined records plus the authenticated user's custom exercises.
+- Search is case-insensitive and partial.
+- Muscle/equipment/difficulty values use OR within a category and AND across categories.
+- Secondary muscles are optional and may be empty.
+- Icons are optional and use `iconReference`; missing/unsupported references use the default exercise icon.
 
-Semantics:
-- Name search is case-insensitive and partial.
-- Values are OR within a category.
-- Categories are AND across each other.
-- The Favorites filter includes only the authenticated user's favorites.
+**GET /api/v1/exercises/:exerciseId**
 
-## Get Exercise Details
+Returns an accessible predefined or owned custom exercise.
 
-**GET /api/exercises/{exerciseId}**
+**POST /api/v1/exercises**
 
-Returns a predefined exercise or an owned custom exercise.
+Creates a custom exercise for the authenticated user.
 
-Forbidden or missing custom exercise for another user: 404 or 403 according to privacy policy. No other user's metadata is disclosed.
+Required fields: `name`, `primaryMuscleGroup`, `secondaryMuscleGroups`, `equipment`, `difficulty`, `instructions`, `suggestedSets`, `suggestedReps`.
 
-## Create Custom Exercise
+Optional: `iconReference`.
 
-**POST /api/exercises**
+**PATCH /api/v1/exercises/:exerciseId**
 
-Required fields:
-- `name`
-- `primaryMuscleGroup`
-- `secondaryMuscleGroups`
-- `equipment`
-- `difficulty`
-- `instructions`
-- `suggestedSets`
-- `suggestedReps`
+Edits only an owned custom exercise.
 
-Optional:
-- `demoReference`
+**DELETE /api/v1/exercises/:exerciseId**
 
-Validation:
-- 400 for missing required fields or invalid enum/numeric values.
-- Suggested sets/reps must be positive numbers.
-- Difficulty must be Beginner, Intermediate, or Advanced.
-- Custom exercise is associated with the authenticated user.
+Deletes only an owned custom exercise.
 
-## Edit Custom Exercise
+- Cross-user records return 404.
+- Predefined mutation attempts return 403.
 
-**PATCH /api/exercises/{exerciseId}**
+**PUT/DELETE /api/v1/exercises/:exerciseId/favorite**
 
-Allowed only for a custom exercise owned by the authenticated user.
+Adds or removes the authenticated user's favorite relationship.
 
-- 403 or 404 for a predefined or inaccessible exercise.
-- 400 for invalid fields or values.
-- Other exercise metadata remains unaffected.
+## Plan, Rotation, and Workout Endpoints
 
-## Delete Custom Exercise
+- `GET/POST /api/v1/plans`
+- `GET/PATCH/DELETE /api/v1/plans/:planId`
+- `GET/POST /api/v1/plans/:planId/sessions`
+- `PATCH/DELETE /api/v1/plans/:planId/sessions/:sessionId`
+- `PUT /api/v1/plans/:planId/sessions/reorder`
+- `POST/PATCH/DELETE /api/v1/plans/:planId/sessions/:sessionId/exercises`
+- `GET /api/v1/plans/:planId/next-session`
+- `POST /api/v1/plans/:planId/workouts/start`
+- `GET/PATCH /api/v1/workouts/:workoutId`
+- `POST /api/v1/workouts/:workoutId/save-incomplete`
+- `POST /api/v1/workouts/:workoutId/discard`
+- `POST /api/v1/workouts/:workoutId/complete`
 
-**DELETE /api/exercises/{exerciseId}**
+Completing a workout is atomic and idempotent. The final session wraps to the first. Empty plans return no next workout and 409 if start is attempted.
 
-Allowed only for a custom exercise owned by the authenticated user.
+Starting a workout captures a session/exercise snapshot. Plan/template edits afterward do not mutate that snapshot.
 
-- Removes the custom exercise and associated favorite records.
-- 403 or 404 for predefined or inaccessible exercises.
+## History and Progress
 
-## Favorite Exercise
+- `GET /api/v1/history` — chronological completed, incomplete, and discarded entries.
+- `GET /api/v1/history/calendar?month=YYYY-MM` — calendar entries grouped by workout date.
+- `GET /api/v1/history/:workoutId` — immutable status and workout snapshot.
+- `GET /api/v1/progress/summary`
+- `GET /api/v1/progress/exercises/:exerciseId`
 
-**PUT /api/exercises/{exerciseId}/favorite**
-
-Creates the authenticated user's favorite relationship.
-
-- 404 if the exercise is inaccessible.
-- Idempotent when already favorited.
-
-## Unfavorite Exercise
-
-**DELETE /api/exercises/{exerciseId}/favorite**
-
-Removes only the authenticated user's favorite relationship.
-
-- Idempotent if already unfavorited.
+History entries include an explicit `status` of `completed`, `in_progress`, or `discarded`. Only completed entries contribute to progression and personal records.
 
 ## Consistent Error Shape
 
@@ -98,10 +77,7 @@ Removes only the authenticated user's favorite relationship.
     "code": "VALIDATION_ERROR",
     "message": "Human-readable summary",
     "details": [
-      {
-        "field": "suggestedReps",
-        "message": "Must be a positive number"
-      }
+      { "field": "suggestedReps", "message": "Must be a positive integer" }
     ]
   }
 }

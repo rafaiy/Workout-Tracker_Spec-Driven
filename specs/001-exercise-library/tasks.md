@@ -1,245 +1,182 @@
-# Tasks: Exercise Library
+# Tasks: GymFlow MVP
 
-**Input**: Design documents from `/specs/001-exercise-library/`
+**Input**: `spec.md`, `plan.md`, `data-model.md`, API contracts, and clarification checklists.
+**Organization**: Tasks are grouped by implementation milestone and user story.
 
-**Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/
+## Phase 1: Project Setup
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+- [ ] T001 Create `backend/`, `frontend/`, and `shared/` project structures per `plan.md`.
+- [ ] T002 Initialize Node.js/Express/TypeScript backend scripts and dependencies.
+- [ ] T003 Initialize React/TypeScript frontend with React Router, TanStack Query, React Hook Form, Zod, and HTTP client dependencies.
+- [ ] T004 [P] Add backend Vitest, Supertest, and contract-test tooling.
+- [ ] T005 [P] Add frontend Vitest, React Testing Library, and Playwright tooling.
+- [ ] T006 [P] Configure backend/frontend TypeScript, ESLint, Prettier, and environment templates.
+- [ ] T007 Create shared taxonomy, icon, workout-state, and domain-type packages.
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 2: Foundational Infrastructure
 
-**Purpose**: Initialize the React and Node.js application structure
+- [ ] T008 Configure PostgreSQL production and SQLite test database connections.
+- [ ] T009 Create migrations for users/preferences, exercises/favorites, plans/sessions/template exercises, and plan rotation progress.
+- [ ] T010 Create migrations for workout attempts, exercise/set logs, and immutable/history snapshot records.
+- [ ] T011 [P] Implement authentication and secure session/JWT provider adapter.
+- [ ] T012 [P] Implement owner authorization and cross-user privacy helpers.
+- [ ] T013 Implement shared validation, 400/401/403/404/409/500 errors, and correlation IDs.
+- [ ] T014 [P] Seed fixed muscle/equipment/difficulty taxonomy and curated predefined exercises.
+- [ ] T015 Implement optional `iconReference` validation and default-icon fallback data.
+- [ ] T016 [P] Configure test databases/runners and shared fixtures.
+- [ ] T017 [P] Implement reusable loading, empty, error, retry, save-status, and default-icon components.
+- [ ] T018 Configure authenticated API client, TanStack Query cache, and server response error parsing.
+- [ ] T019 [P] Implement persisted theme and kg/lb preference fallback state.
 
-- [ ] T001 Create backend and frontend project directories per `specs/001-exercise-library/plan.md` at repository root
-- [ ] T002 Initialize the Node.js/Express/TypeScript backend with package scripts in `backend/package.json`
-- [ ] T003 Initialize the React/TypeScript frontend with React, React Router, and HTTP client dependencies in `frontend/package.json`
-- [ ] T004 [P] Add Vitest and Supertest backend test dependencies in `backend/package.json`
-- [ ] T005 [P] Add Vitest and React Testing Library frontend test dependencies in `frontend/package.json`
-- [ ] T006 [P] Configure TypeScript, ESLint, and Prettier for backend in `backend/`
-- [ ] T007 [P] Configure TypeScript, ESLint, and Prettier for frontend in `frontend/`
-- [ ] T008 Create environment configuration templates for database, auth, and API URLs in `backend/.env.example` and `frontend/.env.example`
+**Checkpoint**: Foundation passes before feature implementation begins.
 
----
+## Phase 3: US1 - Exercise Library (P1)
 
-## Phase 2: Foundational (Blocking Prerequisites)
+### Tests
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+- [ ] T020 [P] [US1] Add exercise browse/detail/search/filter contract tests.
+- [ ] T021 [P] [US1] Add two-user privacy tests for custom exercise and favorite access.
+- [ ] T022 [P] [US1] Add RTL tests for icon fallback, filters, favorites, custom forms, loading, empty, and error states.
 
-**CRITICAL**: No user story work can begin until this phase is complete
+### Implementation
 
-- [ ] T009 Add PostgreSQL and SQLite-capable database configuration in `backend/src/data/database.ts`
-- [ ] T010 Create Exercise migration with id UUID, name, source, ownerUserId, primary/secondary muscles, equipment, difficulty, instructions, demoReference, suggestedSets, suggestedReps, and timestamps in `backend/src/data/migrations/`
-- [ ] T011 [P] Create ExerciseFavorite migration with userId, exerciseId, createdAt, and unique user/exercise constraint in `backend/src/data/migrations/`
-- [ ] T012 [P] Seed fixed muscle, equipment, and difficulty taxonomies in `backend/src/data/seeds/`
-- [ ] T013 Seed curated predefined exercises with valid demo references in `backend/src/data/seeds/`
-- [ ] T014 Implement authentication middleware for every Exercise Library route in `backend/src/middleware/authenticate.ts`
-- [ ] T015 Implement shared 400/401/403/404/500 error payload handling in `backend/src/middleware/error-handler.ts`
-- [ ] T016 Implement shared request validation middleware in `backend/src/middleware/validate.ts`
-- [ ] T017 [P] Create Exercise domain types, enums, and taxonomy constants in `backend/src/features/exercises/exercise.types.ts`
-- [ ] T018 [P] Create reusable frontend loading, empty, and error components in `frontend/src/components/`
-- [ ] T019 Configure frontend exercise API client with auth and consistent error parsing in `frontend/src/features/exercises/services/exerciseApi.ts`
-- [ ] T020 [P] Configure frontend theme support for persistent light/dark preference in `frontend/src/`
-- [ ] T021 Configure backend and frontend test databases/runners in `backend/vitest.config.ts` and `frontend/vitest.config.ts`
+- [ ] T023 [P] [US1] Implement exercise/favorite repositories and search/filter predicates.
+- [ ] T024 [P] [US1] Implement exercise ownership, predefined read-only, custom CRUD, and favorite services.
+- [ ] T025 [US1] Implement exercise and favorite REST routes/controllers.
+- [ ] T026 [P] [US1] Implement `ExerciseCard`, `ExerciseDetail`, `ExerciseSearch`, `ExerciseFilters`, and `FavoriteButton`.
+- [ ] T027 [P] [US1] Implement custom `ExerciseForm` with optional icon, field validation, and draft preservation.
+- [ ] T028 [US1] Implement `ExerciseLibraryPage` and `ExerciseDetailPage` with pagination and default-icon fallback.
 
-**Checkpoint**: Foundation ready - user story implementation can now begin
+**Checkpoint**: Browse/search/filter/detail/favorite/custom CRUD work independently.
 
----
+## Phase 4: US2 - Workout Plan Builder (P1)
 
-## Phase 3: User Story 1 - Browse and Discover Exercises (Priority: P1) MVP
+### Tests
 
-**Goal**: Allow an authenticated user to browse predefined exercises, open exercise details, and see only accessible owned custom exercises
+- [ ] T029 [P] [US2] Add unit tests for session/exercise ordering, set/repetition validation, and reorder operations.
+- [ ] T030 [P] [US2] Add integration/contract tests for plan ownership, session CRUD, template exercise CRUD, and deleted templates.
+- [ ] T031 [P] [US2] Add RTL/Playwright tests for plan creation, reorder, customization, and deletion.
 
-**Independent Test**: Seeded predefined exercises are grouped by muscle group and detail data renders while another user's custom exercise remains inaccessible
+### Implementation
 
-### Tests for User Story 1
+- [ ] T032 [P] [US2] Implement plan/session/template repositories and reorder transactions.
+- [ ] T033 [US2] Implement plan/session/template domain services and ownership rules.
+- [ ] T034 [US2] Implement plan/session/template REST routes/controllers.
+- [ ] T035 [P] [US2] Implement `PlanListPage`, `PlanEditorPage`, session cards, exercise selectors, and accessible reorder controls.
+- [ ] T036 [US2] Prevent live plan/template edits from mutating completed or active workout snapshots.
 
-- [ ] T022 [P] [US1] Write Supertest contract tests for GET `/api/exercises` and GET `/api/exercises/:exerciseId` in `backend/tests/contract/exercise-browse.contract.test.ts`
-- [ ] T023 [P] [US1] Write integration tests for predefined visibility and cross-user custom exercise privacy in `backend/tests/integration/exercise-browse.integration.test.ts`
-- [ ] T024 [P] [US1] Write React Testing Library tests for exercise list, detail, loading, empty, and unavailable-media states in `frontend/tests/exercises/exercise-browse.test.tsx`
+**Checkpoint**: Multiple plans and ordered templates are independently functional.
 
-### Implementation for User Story 1
+## Phase 5: US3 - Sequential Rotation (P1)
 
-- [ ] T025 [P] [US1] Implement Exercise repository browse/detail queries in `backend/src/features/exercises/exercise.repository.ts`
-- [ ] T026 [P] [US1] Implement Exercise service read rules for predefined and owned-custom visibility in `backend/src/features/exercises/exercise.service.ts`
-- [ ] T027 [US1] Implement GET browse and detail controllers/routes in `backend/src/features/exercises/exercise.controller.ts` and `backend/src/features/exercises/exercise.routes.ts`
-- [ ] T028 [P] [US1] Implement `ExerciseCard` for name and available metadata in `frontend/src/features/exercises/components/ExerciseCard.tsx`
-- [ ] T029 [P] [US1] Implement `ExerciseDetail` with unavailable-media fallback in `frontend/src/features/exercises/components/ExerciseDetail.tsx`
-- [ ] T030 [US1] Implement browse/detail hooks for loading and error state in `frontend/src/features/exercises/hooks/useExercises.ts` and `frontend/src/features/exercises/hooks/useExercise.ts`
-- [ ] T031 [US1] Implement `ExerciseLibraryPage` muscle-group browsing and pagination in `frontend/src/features/exercises/pages/ExerciseLibraryPage.tsx`
-- [ ] T032 [US1] Implement `ExerciseDetailPage` for accessible exercise details in `frontend/src/features/exercises/pages/ExerciseDetailPage.tsx`
+### Tests
 
-**Checkpoint**: User Story 1 is independently functional and testable
+- [ ] T037 [P] [US3] Add unit tests for next-session wrapping, final-to-first wrap, rest/missed no-op, and independent plans.
+- [ ] T038 [P] [US3] Add integration tests for empty plans, deleted current sessions, incomplete/resume/discard no-op, resumed completion, and concurrent completion.
+- [ ] T039 [P] [US3] Add Playwright tests for session 1 → session 2 and final-session → first-session wrap.
 
----
+### Implementation
 
-## Phase 4: User Story 2 - Search and Combine Filters (Priority: P1)
+- [ ] T040 [P] [US3] Implement per-plan progress repository and ordered-session lookup.
+- [ ] T041 [US3] Implement pure cyclic rotation service with no weekday or calendar input.
+- [ ] T042 [US3] Implement no-next-workout behavior for plans with no valid sessions and deleted-current-session fallback to the next remaining session.
+- [ ] T043 [US3] Implement start/resume/save-incomplete/discard/completion state transitions.
+- [ ] T044 [US3] Implement transactional completion locking, idempotency keys, and duplicate guards.
+- [ ] T045 [US3] Implement next-session and completion REST routes/controllers.
 
-**Goal**: Let users search names and combine muscle group, equipment, difficulty, and Favorites filters
+**Checkpoint**: Cyclic, per-plan rotation advances exactly once only on completion.
 
-**Independent Test**: Partial mixed-case search and combined filters return exact OR-within-category and AND-across-category matches
+## Phase 6: US4 - Active Workout Logging and Snapshots (P1)
 
-### Tests for User Story 2
+### Tests
 
-- [ ] T033 [P] [US2] Write unit tests for case-insensitive partial-name search and filter semantics in `backend/tests/unit/exercise-filter.test.ts`
-- [ ] T034 [P] [US2] Write Supertest contract tests for valid and invalid search/filter query combinations in `backend/tests/contract/exercise-search.contract.test.ts`
-- [ ] T035 [P] [US2] Write React Testing Library tests for search, filter combinations, reset, and no-results states in `frontend/tests/exercises/exercise-search.test.tsx`
+- [ ] T046 [P] [US4] Add unit tests for set/repetition/weight/unit validation and snapshot serialization.
+- [ ] T047 [P] [US4] Add integration tests for workout-only exercise changes, save/resume/discard/complete, source-plan edits/deletes, and snapshot preservation.
+- [ ] T048 [P] [US4] Add RTL/Playwright tests for active workout, prior performance, rest timer, duration, save failure, resume, discard, and finish.
 
-### Implementation for User Story 2
+### Implementation
 
-- [ ] T036 [P] [US2] Extend Exercise repository with case-insensitive partial search and paginated category predicates in `backend/src/features/exercises/exercise.repository.ts`
-- [ ] T037 [US2] Implement query validation for search, repeated filters, favorites, page, and pageSize in `backend/src/features/exercises/exercise.validation.ts`
-- [ ] T038 [US2] Update GET `/api/exercises` to apply OR within categories and AND across active categories in `backend/src/features/exercises/exercise.service.ts`
-- [ ] T039 [P] [US2] Implement accessible `ExerciseSearch` with case-insensitive query state in `frontend/src/features/exercises/components/ExerciseSearch.tsx`
-- [ ] T040 [P] [US2] Implement `ExerciseFilters` for fixed muscle, equipment, difficulty, and Favorites controls in `frontend/src/features/exercises/components/ExerciseFilters.tsx`
-- [ ] T041 [US2] Integrate search/filter/pagination state and no-results reset into `frontend/src/features/exercises/pages/ExerciseLibraryPage.tsx`
+- [ ] T049 [P] [US4] Implement workout attempt, exercise-log, set-log, and previous-performance repositories.
+- [ ] T050 [US4] Implement active-workout snapshot capture and workout-only template isolation.
+- [ ] T051 [US4] Implement active-workout routes/controllers for drafts, sets, timer-independent duration, save-incomplete, discard, and complete.
+- [ ] T052 [P] [US4] Implement `ActiveWorkoutPage`, set editor, exercise controls, notes, duration, and rest timer.
+- [ ] T053 [P] [US4] Implement prior-performance panel and unavailable-performance state.
+- [ ] T054 [US4] Preserve drafts locally/server-side and prevent false success on save failure.
+- [ ] T055 [US4] Normalize and convert kg/lb values consistently while preserving display preferences.
 
-**Checkpoint**: Browse and search/filter stories both work independently
+**Checkpoint**: Active logging works and source edits/deletes never mutate active snapshots.
 
----
+## Phase 7: US5 - Workout History with Status (P2)
 
-## Phase 5: User Story 3 - Favorite Exercises (Priority: P2)
+### Tests
 
-**Goal**: Allow each user to favorite and unfavorite predefined or owned custom exercises
+- [ ] T056 [P] [US5] Add integration tests for completed, incomplete, and discarded history entries and plan/exercise edit/delete isolation.
+- [ ] T057 [P] [US5] Add contract tests for chronological history, calendar history, status filtering, and detail snapshots.
+- [ ] T058 [P] [US5] Add RTL/Playwright tests for status labels and deleted-source history readability.
 
-**Independent Test**: One user's favorite state is independent of a second user and deleting a custom exercise removes stale favorites
+### Implementation
 
-### Tests for User Story 3
+- [ ] T059 [P] [US5] Implement status snapshot serialization for completed, in-progress, and discarded workouts and preserve start-time data.
+- [ ] T060 [P] [US5] Implement chronological/calendar history repositories and status aggregation.
+- [ ] T061 [US5] Implement history REST routes/controllers with completed/in_progress/discarded status.
+- [ ] T062 [US5] Implement `WorkoutHistoryPage` and calendar/detail components with visible status badges.
+- [ ] T063 [US5] Exclude incomplete/discarded attempts from completion totals and PR/progress calculations.
 
-- [ ] T042 [P] [US3] Write Supertest contract tests for favorite/unfavorite endpoints in `backend/tests/contract/exercise-favorite.contract.test.ts`
-- [ ] T043 [P] [US3] Write integration tests for per-user favorites and custom-exercise deletion cleanup in `backend/tests/integration/exercise-favorite.integration.test.ts`
-- [ ] T044 [P] [US3] Write React Testing Library tests for favorite toggle, optimistic rollback, and Favorites filter in `frontend/tests/exercises/exercise-favorite.test.tsx`
+**Checkpoint**: History includes all attempt statuses and completed records remain immutable.
 
-### Implementation for User Story 3
+## Phase 8: US6 - Dashboard, Progress, and Settings (P2)
 
-- [ ] T045 [P] [US3] Implement ExerciseFavorite repository add/remove/exists operations in `backend/src/features/exercises/exercise.repository.ts`
-- [ ] T046 [US3] Implement favorite and unfavorite service rules in `backend/src/features/exercises/exercise.service.ts`
-- [ ] T047 [US3] Implement PUT and DELETE `/api/exercises/:exerciseId/favorite` routes in `backend/src/features/exercises/exercise.routes.ts`
-- [ ] T048 [P] [US3] Implement `FavoriteButton` with accessible state and error feedback in `frontend/src/features/exercises/components/FavoriteButton.tsx`
-- [ ] T049 [US3] Implement favorite mutations and cache reconciliation in `frontend/src/features/exercises/hooks/useExerciseMutations.ts`
-- [ ] T050 [US3] Integrate favorite-only filtering and stale-state cleanup in `frontend/src/features/exercises/pages/ExerciseLibraryPage.tsx`
+### Tests
 
-**Checkpoint**: User Story 3 is independently functional
+- [ ] T064 [P] [US6] Add unit tests for completed-only totals, volume, PR, muscle frequency, and period calculations.
+- [ ] T065 [P] [US6] Add integration tests for deleted-exercise snapshots and no-data states.
+- [ ] T066 [P] [US6] Add RTL/Playwright tests for dashboard, progress, theme, and unit settings.
 
----
+### Implementation
 
-## Phase 6: User Story 4 - Create and Manage Custom Exercises (Priority: P2)
+- [ ] T067 [P] [US6] Implement centralized progress aggregation from completed records only.
+- [ ] T068 [US6] Implement dashboard, summary, and exercise-progress API routes.
+- [ ] T069 [P] [US6] Implement `DashboardPage`, `ProgressPage`, totals/cards/charts, and no-data states.
+- [ ] T070 [P] [US6] Implement `SettingsPage` for theme, kg/lb preference, and account settings.
+- [ ] T071 [US6] Implement responsive `AppShell` navigation for all required screens.
 
-**Goal**: Let users create, edit, and delete only their own custom exercises with validated metadata
+**Checkpoint**: Dashboard/progress/settings and all primary navigation flows pass.
 
-**Independent Test**: Two-user integration proves owner-only custom CRUD and predefined mutation rejection while field-level validation is consistent
+## Phase 9: Security, Accessibility, and Reliability
 
-### Tests for User Story 4
+- [ ] T072 [P] Add multi-user privacy tests across plans, favorites, custom exercises, workouts, history, and progress.
+- [ ] T073 [P] Configure CSRF/session security, CORS, rate limiting, secure headers, and ORM parameterization.
+- [ ] T074 [P] Add keyboard/focus/live-region/semantic-markup tests across primary flows.
+- [ ] T075 [P] Add 320 px and desktop responsive/overflow tests.
+- [ ] T076 [P] Add external exercise fallback, missing-icon default, and unsupported-icon-reference tests.
+- [ ] T077 Add structured logging, correlation IDs, and secret-safe redaction.
+- [ ] T078 Run security, accessibility, responsive, and save-failure regressions.
 
-- [ ] T051 [P] [US4] Write Supertest contract tests for POST, PATCH, and DELETE custom exercise endpoints in `backend/tests/contract/exercise-custom.contract.test.ts`
-- [ ] T052 [P] [US4] Write integration tests for owner-only CRUD, cross-user denial, predefined mutation rejection, and delete cleanup in `backend/tests/integration/exercise-custom.integration.test.ts`
-- [ ] T053 [P] [US4] Write unit tests for required fields, positive sets/reps, fixed taxonomies, and media rules in `backend/tests/unit/exercise-validation.test.ts`
-- [ ] T054 [P] [US4] Write React Testing Library tests for create/edit/delete validation, save failure retry, and predefined read-only UI in `frontend/tests/exercises/exercise-form.test.tsx`
+## Phase 10: Validation and Milestone Sign-off
 
-### Implementation for User Story 4
+- [ ] T079 Add end-to-end journeys for exercises, plans, cyclic rotation, logging, snapshots, history, progress, and settings.
+- [ ] T080 Run full frontend/backend suites and fix regressions.
+- [ ] T081 Verify the constitution and post-clarification checklists.
+- [ ] T082 Document setup, migrations, seed/icon data, provider configuration, and validation procedures.
+- [ ] T083 Run performance checks for search/history/progress/concurrent completion and resolve regressions.
+- [ ] T084 Recheck requirement traceability and mark only genuinely unresolved provider/auth/configuration decisions before sign-off.
 
-- [ ] T055 [P] [US4] Implement server schemas for name, primary/secondary muscles, equipment, difficulty, instructions, demoReference, suggestedSets, and suggestedReps in `backend/src/features/exercises/exercise.validation.ts`
-- [ ] T056 [P] [US4] Implement custom create/edit/delete repository operations in `backend/src/features/exercises/exercise.repository.ts`
-- [ ] T057 [US4] Implement custom ownership and predefined read-only service rules in `backend/src/features/exercises/exercise.service.ts`
-- [ ] T058 [US4] Implement POST, PATCH, and DELETE exercise routes/controllers in `backend/src/features/exercises/exercise.routes.ts` and `backend/src/features/exercises/exercise.controller.ts`
-- [ ] T059 [P] [US4] Implement `ExerciseForm` with field-level validation and draft preservation in `frontend/src/features/exercises/components/ExerciseForm.tsx`
-- [ ] T060 [US4] Implement create/edit/delete mutations and retry behavior in `frontend/src/features/exercises/hooks/useExerciseMutations.ts`
-- [ ] T061 [US4] Add custom exercise create/edit/delete entry points to `frontend/src/features/exercises/pages/ExerciseLibraryPage.tsx` and `ExerciseDetailPage.tsx`
-- [ ] T062 [US4] Prevent predefined edit/delete controls and handle server 403 responses in `frontend/src/features/exercises/`
+## Dependencies
 
-**Checkpoint**: All four user stories are independently functional
+- Foundation → every feature.
+- Exercise Library → plan exercise selection and prior-performance data.
+- Plan Builder → active workout sessions and rotation source sessions.
+- Rotation → transactional completion and per-plan progress.
+- Active Workout → snapshot/history/progress data.
+- History Status → progress aggregation and visible status views.
+- Progress/Settings → completed history and authenticated preferences.
 
----
+## MVP Delivery Order
 
-## Phase 7: Polish & Cross-Cutting Concerns
-
-**Purpose**: Accessibility, responsive behavior, performance, documentation, and final validation
-
-- [ ] T063 [P] Add keyboard navigation and focus management tests across exercise library components in `frontend/tests/exercises/`
-- [ ] T064 [P] Add WCAG 2.1 AA contrast and semantic markup checks across exercise pages in `frontend/tests/exercises/`
-- [ ] T065 [P] Add 320 px and 1920 px responsive layout checks in `frontend/tests/exercises/`
-- [ ] T066 Benchmark combined search/filter with 1,000 accessible exercises in `backend/tests/integration/exercise-performance.integration.test.ts`
-- [ ] T067 [P] Add structured logging with correlation identifiers and no secrets in `backend/src/middleware/` and exercise feature files
-- [ ] T068 Review all API payloads and domain operations for consistent error envelope usage in `backend/src/`
-- [ ] T069 [P] Add user-facing error, loading, empty, and unavailable-media documentation in `specs/001-exercise-library/quickstart.md`
-- [ ] T070 Run full frontend and backend test suites and fix regressions in `backend/` and `frontend/`
-- [ ] T071 Run `specs/001-exercise-library/quickstart.md` end-to-end validation
-- [ ] T072 Recheck implementation against the constitution and requirements review checklist in `specs/001-exercise-library/checklists/review.md`
-
----
-
-## Dependencies & Execution Order
-
-### Phase Dependencies
-
-- **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Phase 1 completion - blocks all user stories
-- **User Stories (Phase 3–6)**: Depend on Foundational completion
-- **Polish (Phase 7)**: Depends on all desired user stories being complete
-
-### User Story Dependencies
-
-- **US1 - Browse**: No dependency on US2, US3, or US4
-- **US2 - Search/Filters**: Uses browse repository/services and can start after Foundation; independently testable
-- **US3 - Favorites**: Uses Exercise/ExerciseFavorite entities and can start after Foundation
-- **US4 - Custom Exercise CRUD**: Uses Exercise entity and auth/validation foundation; independently testable
-
-### Parallel Opportunities
-
-- Setup tasks marked [P] can run in parallel
-- Database, middleware, taxonomy, and frontend foundation tasks marked [P] can run in parallel
-- After Foundation, US1–US4 can proceed in parallel if staffed
-- Tests for each story marked [P] can run before implementation
-- Backend repository/service/controller work and frontend component/hooks work may proceed in separate parallel tracks after contracts are fixed
-
----
-
-## Parallel Example: User Story 1
-
-```text
-T022 Supertest GET browse/detail contract tests
-T023 Two-user browse privacy integration tests
-T024 React Testing Library browse/detail tests
-T025 Exercise browse/detail repository
-T028 ExerciseCard component
-T029 ExerciseDetail component
-```
-
----
-
-## Parallel Example: User Story 4
-
-```text
-T051 POST/PATCH/DELETE contract tests
-T052 Two-user custom CRUD integration tests
-T053 Custom exercise validation unit tests
-T054 React custom exercise form tests
-T055 Server validation schemas
-T056 Custom repository operations
-T059 ExerciseForm component
-```
-
----
-
-## Implementation Strategy
-
-### MVP First (User Story 1)
-
-1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational
-3. Complete Phase 3: User Story 1
-4. STOP and validate: seeded predefined browse/detail and cross-user privacy work independently
-
-### Incremental Delivery
-
-1. Foundation → Browse/detail MVP
-2. Add search/filter
-3. Add favorites
-4. Add custom exercise CRUD
-5. Complete accessibility, responsive, performance, and polish validation
-
-### Independent Test Criteria
-
-- **US1**: Browse/detail and predefined/custom privacy pass without search, favorites, or custom CRUD
-- **US2**: Search/filter semantics pass independently from favorites and custom CRUD
-- **US3**: Per-user favorite state and deletion cleanup pass independently
-- **US4**: Owner-only custom CRUD and predefined rejection pass independently
+1. Foundation/authentication.
+2. Exercise library with icon fallback.
+3. Plan builder.
+4. Cyclic per-plan rotation.
+5. Active workout logging with start-time snapshots.
+6. Completed/incomplete/discarded history.
+7. Dashboard/progress/settings and accessibility/reliability polish.

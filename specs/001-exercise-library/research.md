@@ -1,59 +1,63 @@
-# Phase 0 Research: Exercise Library
+# Phase 0 Research: GymFlow MVP
 
-## Decision: Web application architecture
+## Web Architecture
 
-**Chosen:** React/TypeScript frontend with Node.js/Express backend and PostgreSQL for production or SQLite for MVP.
+**Decision:** React/TypeScript with Node.js/Express/TypeScript and PostgreSQL; SQLite for local/tests.
 
-**Rationale:** This matches the GymFlow constitution and provides strict ownership, query filtering, and relational integrity for exercises and favorites.
+**Rationale:** React and Express satisfy the constitution and provide clear modular domains. PostgreSQL provides transactional guarantees for rotation, ownership, favorites, and history. SQLite keeps local MVP validation and tests fast.
 
-**Alternatives considered:**
-- Client-only persistence — rejected because custom-exercise privacy and ownership require server authorization.
-- GraphQL — rejected as unnecessary for CRUD and filtered browse operations; REST is simpler and constitution-aligned.
+**Alternatives:** Client-only persistence was rejected for authentication/privacy; GraphQL was rejected as unnecessary for stable REST CRUD and workout operations.
 
-## Decision: Fixed taxonomies
+## Authentication
 
-**Chosen:** Fixed muscle-group taxonomy already specified in the feature. Equipment uses a curated MVP list, difficulty is exactly Beginner, Intermediate, or Advanced, and values outside lists are rejected.
+**Decision:** Use secure, revocable authenticated sessions or short-lived JWTs with refresh/revocation controls, determined at implementation setup.
 
-**Rationale:** Controlled values produce consistent filters and prevent ambiguous custom-exercise metadata.
+**Rationale:** Every plan, workout, favorite, history, and progress operation is private and requires server-side authorization.
 
-**Alternatives considered:** Free-text equipment/difficulty — rejected because it fragments filtering and validation.
+## Exercise Data
 
-## Decision: Exercise data model
+**Decision:** Seed predefined exercises locally and support optional external providers through an isolated adapter.
 
-**Chosen:** Separate Exercise, MuscleGroup membership, and UserFavorite entities. Exercises distinguish predefined versus user-owned records through ownership plus immutable predefined status.
+**Rationale:** Local exercise data remains available during provider outages. External data is supplementary and never a dependency for historical snapshots.
 
-**Rationale:** Predefined records can be seeded and remain read-only, while custom records remain private and editable by their owner.
+## Exercise Icons and Taxonomies
 
-**Alternatives considered:** Single exercise table with mutable source metadata — rejected because it could weaken predefined read-only guarantees.
+**Decision:** Icons are optional `iconReference` values. Missing or unavailable icon references use a default exercise icon. The MVP has icon-only exercise presentation.
 
-## Decision: Search and filtering semantics
+**Taxonomies:** Muscle groups are fixed; equipment is fixed with `Other` available for custom exercises; difficulty is Beginner, Intermediate, or Advanced.
 
-**Chosen:** Case-insensitive partial-name matching; OR within a filter category; AND across active categories. Search plus all active filters narrows the accessible exercise set.
+**Rationale:** A single icon fallback keeps cards/details usable without external exercise presentation dependencies.
 
-**Rationale:** The clarified behavior is predictable and testable.
+## Search and Filtering
 
-**Alternatives considered:** AND within categories — rejected based on the clarification answer.
+**Decision:** Search is case-insensitive and partial-name based. OR semantics apply within a filter category; AND semantics apply across active categories.
 
-## Decision: Suggested sets/reps
+## Plans and Ordered Sessions
 
-**Chosen:** Store suggestedSets and suggestedReps as separate positive integer values.
+**Decision:** Plans contain ordered session templates and template exercises with configured sets/repetitions.
 
-**Rationale:** The clarified representation is simple, validatable, and reusable by future plan features.
+**Rationale:** Templates remain separate from active attempts and immutable workout history.
 
-**Alternatives considered:** Free-text prescriptions or numeric ranges — rejected because they introduce ambiguous parsing and validation.
+## Sequential Rotation
 
-## Decision: Media requirement
+**Decision:** Each plan stores independent progress based on the last completed session. Completion advances once and wraps from the final session to session 1. Rest/missed days, incomplete saves, resumes, and discards do not advance progress.
 
-**Chosen:** A predefined exercise requires a valid image/demo reference. A custom exercise may omit it and shows an unavailable-media state.
+**Rationale:** Weekday/calendar state is excluded from the domain rule and concurrent completion is guarded transactionally.
 
-**Rationale:** Curated content must remain demonstrable while custom exercise creation stays low-friction.
+## Workout Snapshots
 
-**Alternatives considered:** Mandatory media for custom exercises — rejected based on the clarification answer.
+**Decision:** Start a workout by snapshotting session and exercise details. Keep the snapshot unchanged across later plan/session/exercise edits. Completing a resumed workout updates the history record to completed and advances rotation once.
 
-## Decision: Pagination and testing
+**Rationale:** Immutable start-time data preserves resumed-workout truth and prevents source template mutations from rewriting history.
 
-**Chosen:** Paginate browse/search results by default for the MVP and preserve filter state in the client. Add unit, integration, contract, and accessibility checks.
+## History and Status
 
-**Rationale:** Pagination limits result payload size while tests verify privacy, ownership, taxonomy, and historical separation boundaries.
+**Decision:** History includes completed, in-progress, and discarded workout attempts with visible status. Only completed attempts contribute to totals, volume, and personal records.
 
-**Alternatives considered:** Loading all 1,000 exercises — accepted as possible but less scalable for mobile performance.
+## Weight and Units
+
+**Decision:** Store normalized weight values and return values in the user's kg/lb preference. Repetitions and set counts are positive integers; weight is non-negative and bounded by implementation validation.
+
+## Testing
+
+**Decision:** Use unit, integration/contract, component, accessibility, and end-to-end tests with Vitest, Supertest, React Testing Library, Playwright, PostgreSQL, and SQLite fixtures.

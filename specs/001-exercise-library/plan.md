@@ -1,325 +1,375 @@
-# Implementation Plan: Exercise Library
+# Implementation Plan: GymFlow MVP
 
 **Branch**: `001-exercise-library` | **Date**: 2026-11-19 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/001-exercise-library/spec.md`
+**Input**: Approved GymFlow MVP specification and constitution.
 
 ## Summary
 
-Build the authenticated Exercise Library MVP for GymFlow. Users will browse predefined exercises, search and combine fixed filters, view exercise details, manage private favorites, and create/edit/delete only their own custom exercises. The implementation will use a modular React/TypeScript single-page frontend and an Express/TypeScript REST backend with relational persistence, server-side validation, and ownership authorization.
+Implement GymFlow as a mobile-first React/TypeScript single-page application with a Node.js/Express/TypeScript REST backend and PostgreSQL persistence. The MVP delivery sequence is exercise library, workout-plan builder, completion-based per-plan rotation, active workout logging, previous-performance comparison, and immutable workout history. SQLite may be used for local and automated test environments.
 
 ## Technical Context
 
-**Language/Version**: TypeScript on Node.js LTS for the backend and React 18+ with TypeScript for the frontend.
+- **Frontend**: React 18+, TypeScript, React Router, TanStack Query, React Hook Form, Zod, Vitest, React Testing Library, and an accessible component library or local primitives.
+- **Backend**: Node.js LTS, Express, TypeScript, Zod, Prisma or Kysely, Pino, Supertest, and Vitest.
+- **Database**: PostgreSQL in production; SQLite only for local development and isolated tests.
+- **Authentication**: Existing-user integration is unresolved. Recommend a secure session-based provider with server-side session storage or JWT sessions only if refresh/revocation requirements are satisfied. Provider, password policy, account recovery, and email verification will be resolved before implementation sign-off.
+- **Exercise data**: Curated seed data plus optional external providers through an adapter. External failures are isolated and must never block predefined or custom exercises.
+- **Target**: Modern desktop/mobile browsers, 320–1920 CSS pixels, WCAG 2.1 AA.
+- **Testing**: Vitest, Supertest, React Testing Library, Playwright, Prisma migrations, and isolated SQLite/PostgreSQL test environments.
 
-**Primary Dependencies**:
-- Frontend: React, React Router, an HTTP client, React Testing Library, Vitest.
-- Backend: Express, Zod or equivalent runtime validation, authentication middleware, Prisma or an equivalent SQL migration/query tool, Pino or equivalent structured logging.
-- Shared: TypeScript, ESLint, Prettier, environment-variable configuration.
-
-**Storage**: PostgreSQL in production and SQLite for MVP/local development. The relational schema will enforce exercise ownership and favorite uniqueness.
-
-**Testing**:
-- Backend: Vitest for unit and integration tests, Supertest for HTTP contract tests.
-- Frontend: Vitest and React Testing Library for component, interaction, form, loading, empty, and error-state tests.
-
-**Target Platform**: Desktop and mobile web browsers from 320 px to 1920 px.
-
-**Project Type**: Full-stack web application with separate frontend and backend projects.
-
-**Performance Goals**: Combined search/filter results for up to 1,000 accessible exercises within 2 seconds in at least 95% of measured sessions.
-
-**Constraints**: Mobile-first, WCAG 2.1 AA, persistent light/dark preferences, fixed taxonomy values, client and server validation, and consistent REST error responses.
-
-**Scale/Scope**: Single authenticated user domains for the MVP exercise library only. No workout plans, rotation, logging, history, analytics, or calendar behavior belongs in this feature.
-
-## Constitution Check
-
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+## Constitution Alignment
 
 | Gate | Status | Evidence |
 |---|---|---|
-| React + Node.js/Express architecture | Pass | Frontend and backend choices match constitution |
-| PostgreSQL/SQLite relational data | Pass | Exercise, muscle, owner, and favorite relationships are modeled relationally |
-| RESTful APIs and consistent status codes | Pass | Defined contracts use 400, 401, 403, 404, 500 and a shared error payload |
-| Template/history separation | Pass | Exercise configuration is isolated from logs and no workout-history mutation is planned |
-| Authentication and secrets | Pass | Protected endpoints use auth middleware; secrets remain environment configuration |
-| Custom exercise privacy | Pass | Every custom CRUD/read operation is owner- or server-authorized |
-| Predefined read-only behavior | Pass | Seeded source records reject user create/edit/delete operations |
-| Mobile-first and accessible UI | Pass | Responsive layout, semantic controls, keyboard interaction, and ARIA requirements |
-| Validation and quality gates | Pass | Zod/runtime validation, RTL/Vitest/Supertest, loading/empty/error tests |
-| Domain scope | Pass | Only exercise library functionality is included |
+| React/TypeScript + Express/TypeScript | Pass | Recommended stack follows mandatory platform constraints. |
+| Relational persistence | Pass | Users, plans, templates, logs, sets, favorites, and snapshots use relational entities. |
+| REST + status/error conventions | Pass | Defined endpoints use 400, 401, 403, 404, 409, and 500 with a shared envelope. |
+| Historical immutability | Pass | Completion creates immutable snapshot fields independent of live templates/exercises. |
+| Sequential completion rotation | Pass | Progress is stored per plan and advanced only by a transactional completion operation. |
+| Authentication and secrets | Pass | Every API route authenticates and authorizes; secrets use environment variables. |
+| Modular architecture | Pass | Features are isolated across UI, domain services, API, repositories, and persistence. |
+| Mobile-first accessibility | Pass | Responsive component primitives, semantic HTML, keyboard operation, and contrast checks are required. |
+| Quality gates | Pass | Unit, integration, contract, accessibility, and end-to-end testing are included. |
 
 ## Architecture
 
-### Backend
-
-Use an Express application organized around modular domains:
-
-- `auth` middleware resolves the authenticated user for every route.
-- `features/exercises` owns routes, controllers, services, validation, repositories, taxonomy constants, and types.
-- `middleware/error` maps domain and validation failures to the standard API error shape.
-- `middleware/requestValidation` validates query parameters and request bodies before controller execution.
-- `data` owns database configuration, migrations, seed data, and database client lifecycle.
-
-Recommended flow:
+### Request and state flow
 
 ```text
-React feature service → Express route → auth/validation middleware
-→ exercise controller → exercise service → exercise repository → relational database
+UI component/page
+  -> feature hook/service
+  -> REST client
+  -> auth + validation middleware
+  -> route/controller
+  -> domain service
+  -> repository/transaction
+  -> PostgreSQL/SQLite
 ```
 
-Repositories stay responsible for SQL and transaction boundaries. Services enforce ownership and source rules. Controllers only translate HTTP inputs/outputs. This keeps privacy and read-only rules testable below the transport layer.
+UI components must not contain authorization or historical-integrity logic. Domain services own plan, rotation, workout, snapshot, and previous-performance rules. Repositories own SQL and transactions. Controllers translate HTTP to domain operations and standardized errors.
 
-### Frontend
-
-Use a single exercise-library state boundary with reusable components and TanStack Query or an equivalent request cache if adopted during implementation. State ownership should remain explicit:
-
-- The library page owns search/filter/pagination state.
-- An exercise-detail view owns selected-exercise loading and unavailable-media state.
-- Custom-exercise forms own draft fields and field-level validation.
-- Favorite state is updated through one mutation and reconciled from server response or invalidation.
-
-Persistent theme preference is stored through the existing user preference mechanism. If no preference mechanism exists yet, the plan will add only the minimal persisted client preference required by this feature.
-
-## Project Structure
-
-### Documentation
+### Backend modules
 
 ```text
-specs/001-exercise-library/
-├── plan.md
-├── research.md
-├── data-model.md
-├── quickstart.md
-├── spec.md
-└── contracts/
-    └── exercise-library-api.md
-```
-
-### Source Code
-
-```text
-backend/
-├── src/
-│   ├── features/
-│   │   └── exercises/
-│   │       ├── exercise.routes.ts
-│   │       ├── exercise.controller.ts
-│   │       ├── exercise.service.ts
-│   │       ├── exercise.repository.ts
-│   │       ├── exercise.validation.ts
-│   │       ├── exercise.types.ts
-│   │       └── exercise.mappers.ts
-│   ├── middleware/
-│   │   ├── authenticate.ts
-│   │   ├── authorize.ts
-│   │   ├── validate.ts
-│   │   └── error-handler.ts
-│   └── data/
-│       ├── database.ts
-│       ├── migrations/
-│       └── seeds/
+backend/src/
+├── modules/
+│   ├── auth/
+│   ├── users/
+│   ├── exercises/
+│   ├── favorites/
+│   ├── plans/
+│   ├── rotation/
+│   ├── workouts/
+│   ├── history/
+│   └── progress/
+├── middleware/
+│   ├── authenticate.ts
+│   ├── authorize.ts
+│   ├── validate.ts
+│   └── error-handler.ts
+├── data/
+│   ├── prisma/
+│   ├── migrations/
+│   └── seeds/
 └── tests/
-    ├── unit/
-    ├── contract/
-    └── integration/
-
-frontend/
-├── src/
-│   ├── features/
-│   │   └── exercises/
-│   │       ├── components/
-│   │       │   ├── ExerciseCard.tsx
-│   │       │   ├── ExerciseDetail.tsx
-│   │       │   ├── ExerciseFilters.tsx
-│   │       │   ├── ExerciseSearch.tsx
-│   │       │   ├── FavoriteButton.tsx
-│   │       │   └── ExerciseForm.tsx
-│   │       ├── pages/
-│   │       │   ├── ExerciseLibraryPage.tsx
-│   │       │   └── ExerciseDetailPage.tsx
-│   │       ├── hooks/
-│   │       │   ├── useExercises.ts
-│   │       │   ├── useExercise.ts
-│   │       │   └── useExerciseMutations.ts
-│   │       └── services/
-│   │           └── exerciseApi.ts
-│   ├── components/
-│   │   ├── LoadingState.tsx
-│   │   ├── EmptyState.tsx
-│   │   └── ErrorState.tsx
-│   ├── services/
-│   └── hooks/
-└── tests/
-    └── exercises/
 ```
 
-## Components
+### Frontend modules
 
-- `ExerciseLibraryPage`: page shell, search/filter state, pagination, loading/empty/error states.
-- `ExerciseSearch`: accessible case-insensitive name search input.
-- `ExerciseFilters`: fixed muscle, equipment, and difficulty controls plus Favorites toggle.
-- `ExerciseCard`: compact metadata and favorite control.
-- `ExerciseDetail`: complete exercise metadata and unavailable-media fallback.
-- `FavoriteButton`: toggles one user's favorite state with progress and error feedback.
-- `ExerciseForm`: create/edit custom exercise form with positive numeric set/repetition fields and field-level errors.
-- `ExerciseDetailPage`: resolves accessible exercise; handles unauthorized or missing records without exposing privacy details.
+```text
+frontend/src/
+├── app/
+│   ├── router.tsx
+│   ├── providers.tsx
+│   └── shell/
+├── features/
+│   ├── dashboard/
+│   ├── exercises/
+│   ├── plans/
+│   ├── active-workout/
+│   ├── history/
+│   ├── progress/
+│   └── settings/
+├── components/
+├── hooks/
+├── services/
+├── stores/
+└── tests/
+```
 
-Reusable controls must use semantic HTML, visible labels, keyboard operation, focus indicators, sufficient contrast, and screen-reader announcements for state changes.
+A TanStack Query cache is the server-state source of truth. Explicit local draft state protects active workouts and forms during network failures. Theme and unit preferences come from authenticated user preferences with a local fallback until synchronization is available.
+
+## Reusable UI Components and Screens
+
+- **AppShell**: navigation, account actions, theme switch, responsive sidebar/mobile navigation.
+- **Dashboard**: next recommended workouts, incomplete workouts, recent activity, volume and workout totals.
+- **ExerciseLibraryPage**: search, filters, favorites, pagination, empty/error states, custom-exercise actions.
+- **ExerciseDetail**: complete metadata and optional `iconReference` with default-icon fallback.
+- **PlanListPage / PlanEditorPage**: plan CRUD, ordered session editors, exercise selectors, set/repetition configuration, and drag or accessible move controls.
+- **ActiveWorkoutPage**: exercise log, set rows, add/remove controls, prior-performance panel, notes, rest timer, duration, save-incomplete, discard, and finish actions.
+- **WorkoutHistoryPage**: chronological and calendar views, filters, detail expansion.
+- **ProgressPage**: totals, volume, PRs, exercise progression, muscle frequency, and weekly/monthly charts.
+- **SettingsPage**: weight unit, theme, account, and preference controls.
+
+Every control must have semantic labels, keyboard support, visible focus, status announcements, and mobile layouts that avoid horizontal overflow.
 
 ## Data Model
 
-### Exercise
+Use UUID primary keys and timestamps consistently. Relational constraints and transactions enforce integrity.
 
-- `id: UUID` — immutable primary key.
-- `name: string` — required, trimmed, non-empty.
-- `source: predefined | custom` — immutable after creation.
-- `ownerUserId: UUID | null` — custom exercises only.
-- `primaryMuscleGroup: enum` — one of the fixed MVP muscle groups.
-- `secondaryMuscleGroups: enum[]` — zero or more fixed taxonomy values.
-- `equipment: enum` — fixed curated equipment value.
-- `difficulty: enum` — Beginner, Intermediate, or Advanced.
-- `instructions: text` — required.
-- `demoReference: string | null` — required for predefined; optional for custom.
-- `suggestedSets: integer` — positive.
-- `suggestedReps: integer` — positive.
-- `createdAt`, `updatedAt` — timestamps.
+### Core entities
 
-A partial unique constraint or application index may support search, but duplicate names are allowed.
+- `User`: identity, unit preference, theme preference, timestamps.
+- `Exercise`: id, name, source (`predefined|custom`), owner user for custom exercises, primary muscle, secondary muscles, equipment, difficulty, instructions, optional `iconReference`, suggested sets/reps, timestamps.
+- `ExerciseFavorite`: userId, exerciseId, createdAt; unique on `(userId, exerciseId)`.
+- `WorkoutPlan`: id, userId, name, status, description, timestamps.
+- `PlanSessionTemplate`: id, planId, name, ordered index, optional notes, timestamps.
+- `TemplateExercise`: id, sessionTemplateId, exerciseId, ordered index, configured sets, configured reps, optional rest seconds.
+- `PlanRotationProgress`: planId, lastCompletedSessionId, nextSessionId or derived next index, lastCompletedAt, version. This entity is one row per plan and must be updated atomically.
 
-### ExerciseFavorite
+### Active and historical entities
 
-- `userId: UUID`.
-- `exerciseId: UUID`.
-- `createdAt: timestamp`.
-- Unique constraint on `(userId, exerciseId)`.
+- `WorkoutAttempt`: id, userId, planId, planSessionTemplateId, state (`not_started|in_progress|completed|discarded`), source session snapshot fields, startedAt, finishedAt, durationSeconds, timestamps, completion version/idempotency key.
+- `ExerciseLog`: id, workoutAttemptId, exerciseId, ordered index, exercise snapshot JSON, set snapshot/metadata fields, notes.
+- `SetLog`: id, exerciseLogId, ordered index, weightValue, weightUnit, repetitions, completed, timestamps.
+- `WorkoutHistorySnapshot`: id, workoutAttemptId, userId, status (`completed|in_progress|discarded`), plan/session/exercise snapshots, set/weight/unit/notes, aggregate totals, duration, and timestamps. A snapshot is created or updated as the workout state changes so calendar and chronological history remain complete.
 
-Deleting a custom exercise cascades or explicitly deletes only its favorite relationships. It must not alter future feature references unless future feature tables establish an immutable snapshot/relationship design.
+### History snapshots
 
-## REST Endpoints
+Live entities use foreign keys for configuration, while start-time snapshots preserve names and metadata for every workout state. Snapshot fields include plan name, session name, ordered muscle groups, exercise name, primary/secondary muscles, equipment, difficulty, instructions summary, optional `iconReference`, suggested/logged sets, reps, weight, unit, notes, duration, and status. Completed entries are used for progress and personal records; incomplete and discarded entries remain visible but are excluded from completed totals and rotation. For exercise history, snapshot rows may be denormalized by design rather than joined only to mutable live exercises.
 
-All endpoints require authentication.
+Deleting a plan or exercise:
 
-| Method | Endpoint | Purpose | Key responses |
-|---|---|---|---|
-| GET | `/api/exercises` | Paginated browse/search/filter | 200, 400, 401, 500 |
-| GET | `/api/exercises/:exerciseId` | Detail for predefined or owned custom exercise | 200, 401, 403, 404, 500 |
-| POST | `/api/exercises` | Create owned custom exercise | 201, 400, 401, 500 |
-| PATCH | `/api/exercises/:exerciseId` | Edit owned custom exercise | 200, 400, 401, 403, 404, 500 |
-| DELETE | `/api/exercises/:exerciseId` | Delete owned custom exercise | 204, 401, 403, 404, 500 |
-| PUT | `/api/exercises/:exerciseId/favorite` | Add per-user favorite | 200/204, 401, 404, 500 |
-| DELETE | `/api/exercises/:exerciseId/favorite` | Remove per-user favorite | 204, 401, 404, 500 |
+1. Marks or removes only live configuration safely.
+2. Never deletes workout history or set logs.
+3. Removes future template references if the plan is deleted, but leaves historical snapshot references readable.
+4. Re-evaluates active/incomplete workouts through explicit server rules, preserving their draft snapshot rather than silently mutating history.
 
-Predefined exercises are never mutable through these endpoints. Any edit or delete attempt receives 403. Inaccessible custom exercises receive 404 or 403 according to the privacy contract, but must not disclose existence or metadata.
+### Relationships
 
-## Search and Filter Rules
+```text
+User 1-* WorkoutPlan
+WorkoutPlan 1-* PlanSessionTemplate
+PlanSessionTemplate 1-* TemplateExercise
+TemplateExercise *-1 Exercise
+WorkoutPlan 1-1 PlanRotationProgress
+User 1-* WorkoutAttempt
+WorkoutPlan 1-* WorkoutAttempt
+WorkoutAttempt 1-* ExerciseLog
+ExerciseLog 1-* SetLog
+WorkoutAttempt 1-1 WorkoutHistorySnapshot
+User 1-* ExerciseFavorite
+ExerciseFavorite *-1 Exercise
+```
 
-- Search matches exercise name case-insensitively using partial matching.
-- Values within one category use OR semantics.
-- Different active categories use AND semantics.
-- Favorites is always constrained to the authenticated user's favorite IDs.
-- Results include predefined exercises and only the user's custom exercises.
-- Pagination is applied after filtering and ordering.
+## REST API Contracts
 
-## Validation
-
-Server validation is authoritative and must validate:
-- trimmed, non-empty name;
-- fixed primary and secondary muscle values;
-- fixed equipment values;
-- Beginner/Intermediate/Advanced difficulty;
-- required instructions;
-- positive integer suggestedSets and suggestedReps;
-- valid media reference format where supplied;
-- predefined source and ownership status on mutations.
-
-The React form mirrors these rules for immediate feedback but never treats client validation as a security boundary.
-
-## Error Handling
-
-Use one JSON error envelope:
+All authenticated endpoints use `/api/v1`. Responses use JSON and a shared error envelope:
 
 ```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Human-readable summary",
-    "details": [
-      { "field": "suggestedReps", "message": "Must be a positive number" }
-    ]
+    "details": [{ "field": "weightValue", "message": "Must be a positive number" }]
   }
 }
 ```
 
-- `400`: invalid input or query parameters.
-- `401`: missing or invalid authentication.
-- `403`: authenticated user attempts a forbidden predefined or custom mutation.
-- `404`: exercise or favorite resource is unavailable or inaccessible.
-- `500`: unexpected server failure, logged with correlation context but not secrets or passwords.
+### Exercises and favorites
 
-Frontend states:
-- `loading`: skeleton or accessible progress status.
-- `empty`: no matching exercises and reset-filter action.
-- `error`: concise message plus retry action.
-- `save error`: preserve draft fields and allow retry.
-- `save success`: confirm and refresh only affected exercise state.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/exercises` | Paginated browse/search/filter |
+| GET | `/exercises/:id` | Accessible predefined or owned custom detail |
+| POST | `/exercises` | Create owned custom exercise |
+| PATCH | `/exercises/:id` | Edit owned custom exercise |
+| DELETE | `/exercises/:id` | Delete owned custom exercise |
+| PUT | `/exercises/:id/favorite` | Add favorite |
+| DELETE | `/exercises/:id/favorite` | Remove favorite |
+| GET | `/exercises/:id/previous-performance` | Latest completed data for prior comparison |
+
+Filters accept repeated or comma-separated fixed taxonomy values. Search is case-insensitive partial-name matching. Muscle/equipment/difficulty values use OR within a category and AND across categories. Cross-user custom records return 404 to avoid existence disclosure.
+
+### Plans and templates
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET/POST | `/plans` | List/create plans |
+| GET/PATCH/DELETE | `/plans/:planId` | Read/update/delete plan |
+| GET/POST | `/plans/:planId/sessions` | Read/create session templates |
+| PATCH/DELETE | `/plans/:planId/sessions/:sessionId` | Update/delete a session |
+| PUT | `/plans/:planId/sessions/reorder` | Persist session order |
+| PUT | `/plans/:planId/sessions/:sessionId/exercises/reorder` | Persist exercise order |
+| POST/PATCH/DELETE | `/plans/:planId/sessions/:sessionId/exercises` | Manage template exercises |
+
+Plan mutation payloads contain explicit ordered indices and server validation rejects duplicate/invalid indices, unknown exercises, invalid sets/reps, or cross-user exercise references.
+
+### Rotation and active workouts
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/plans/:planId/next-session` | Return next session derived from completion progress |
+| POST | `/plans/:planId/workouts/start` | Start or resume a recommended/source session |
+| GET/PATCH | `/workouts/:workoutId` | Read/update active draft |
+| POST | `/workouts/:workoutId/exercises` | Add workout-only exercise |
+| DELETE | `/workouts/:workoutId/exercises/:exerciseLogId` | Remove workout-only exercise |
+| PUT | `/workouts/:workoutId/sets/:setId` | Update weight/reps/completion |
+| POST | `/workouts/:workoutId/save-incomplete` | Persist without completing |
+| POST | `/workouts/:workoutId/discard` | Mark discarded |
+| POST | `/workouts/:workoutId/complete` | Complete atomically and advance once |
+
+The completion request accepts `Idempotency-Key` and/or `completionKey`. The server rejects unknown or already-completed attempts, validates final set data, creates history snapshots and set logs atomically, and uses plan progress locking/version checks to advance once.
+
+### History and progress
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/history` | Paginated chronological history including completed, in-progress, and discarded attempts |
+| GET | `/history/calendar?month=YYYY-MM` | Calendar entries for completed, in-progress, and discarded attempts |
+| GET | `/history/:workoutId` | Status-visible workout snapshot/detail |
+| GET | `/progress/summary` | Totals, volume, frequency, weekly/monthly activity |
+| GET | `/progress/exercises/:exerciseId` | Exercise progression and personal records |
+
+## Sequential Rotation Engine
+
+A plan has a single progress row with `lastCompletedSessionId`, `lastCompletedAt`, `progressVersion`, and a completion index derived from the ordered session templates. The ordered index is never based on weekday or calendar date.
+
+On completion:
+
+1. Authenticate and verify the attempt belongs to the user and plan.
+2. Enter a transaction and lock the workout attempt and plan progress row.
+3. Reject discard or already-completed states and validate an idempotency key.
+4. Persist the final exercise/set logs and immutable history snapshot.
+5. Mark the attempt completed once.
+6. Determine the next session cyclically; completing the final session wraps to the first session. A plan with no valid sessions has no next workout and pauses rotation until a session is added. If the current session is deleted, choose the next remaining session in plan order.
+7. Increment `progressVersion` and update `lastCompletedSessionId/At` exactly once.
+
+If a concurrent duplicate is submitted, the database uniqueness constraint and transaction state return the existing completion result rather than advancing again.
+
+State effects:
+
+- **Rest/missed days**: no completion transaction occurs, so progress is unchanged.
+- **Incomplete save**: state remains `in_progress`; progress unchanged.
+- **Resume**: reopens the existing attempt; no progress change until completion.
+- **Discard**: state becomes `discarded`; progress unchanged.
+- **Completion**: exactly one advancement transaction.
+- **Plan edit**: an active or incomplete workout keeps its start-time session and exercise snapshot; later source edits do not mutate it. Completion of the resumed workout advances the source plan exactly once.
+
+## Exercise and Workout Rules
+
+- Fixed equipment/difficulty/muscle taxonomies are shared frontend/backend constants. Invalid values are rejected on both layers.
+- Suggested sets/reps and active sets use positive integers; weight is a non-negative decimal within configured limits. Weight storage is normalized internally while API values respect kg/lb preferences.
+- Search/filter state is paginated and debounced. OR applies within a category; AND applies across categories.
+- Previous performance reads only the user's completed history and prefers a most-recent completed date. It displays weight, reps, set count, and date with a clear unavailable state.
+- Rest timer state is local/active-workout state with start, pause, reset, and optional notifications. Timer expiration must never imply workout completion or save success.
+- Progress calculations derive completed sets, reps, volume, muscle frequency, activity, and PRs from immutable history/set logs. If a log references a deleted exercise, its snapshot supplies display names and no live join is required.
+
+## Validation, Authorization, and Errors
+
+- Zod schemas validate every request body and query parameter before domain execution.
+- Authentication middleware protects every API route.
+- Domain services verify plan/workout ownership and exercise accessibility.
+- Custom exercise mutations return 404 for inaccessible records and 403 for predefined mutation attempts.
+- 400 validation; 401 unauthenticated; 403 forbidden predefined/source mutation; 404 missing/inaccessible; 409 state/version conflict; 500 unexpected.
+- Pino logs include correlation/request IDs and domain context; secrets, passwords, request credentials, and tokens are excluded.
+- Network/save failures preserve local drafts and return explicit retry actions; no success toast or rotation update occurs before server confirmation.
+
+## Security, Privacy, and Accessibility
+
+- Hash passwords and use secure, revocable authentication sessions or short-lived JWTs with refresh controls.
+- Store no credentials or secrets in source or test fixtures.
+- Use CSRF protection for cookie sessions, strict CORS, secure cookies, rate limiting, and parameterized ORM queries.
+- Add per-user authorization to every list/detail mutation.
+- Active workouts, plans, favorites, history, and progress are private.
+- Use semantic HTML, visible labels, focus management, keyboard reordering alternatives, live regions, and 320 px layouts.
+- Dark/light themes preserve sufficient contrast and persist per user.
+- Exercise icon references are optional. Missing or unsupported icon references use a local/default icon without blocking exercise access.
 
 ## Testing Strategy
 
-### Backend
+### Unit tests
 
-- Vitest unit tests: search/filter semantics, taxonomy validation, positive set/reps validation, and predefined/custom source rules.
-- Supertest contract tests: status codes, routes, query validation, and consistent error shape.
-- Integration tests: two-user privacy, owner-only edit/delete, predefined mutation rejection, favorite isolation, and custom deletion cleanup.
-- Database tests use an isolated SQLite test database for fast repeatable execution.
-- Seed tests verify predefined media and fixed taxonomy integrity.
+- Taxonomy/search/filter semantics.
+- Set/reps/weight/unit validation.
+- Rotation next-session calculation and state transitions.
+- History snapshot serialization and progress aggregation.
+- Idempotency and completion-state guards.
 
-### Frontend
+### Integration and contract tests
 
-- React Testing Library tests: browse, search, combined filters, details, favorite/unfavorite, custom create/edit/delete, loading/empty/error states, draft preservation, and theme rendering.
-- Vitest/JSDOM tests run interactions through accessible queries and keyboard events.
-- Responsive checks verify no overflow or blocked controls at 320 px and 1920 px.
-- Automated WCAG checks supplement, but do not replace, manual keyboard and screen-reader validation.
+- Supertest for every route group and standardized errors.
+- Multi-user ownership/privacy tests.
+- Plan/session/exercise ordering and deletion tests.
+- Transactional completion tests for exactly-one advancement.
+- History integrity tests after plan/exercise edits or deletion.
+- External exercise source failure fallback.
 
-### Acceptance Coverage
+### End-to-end tests
 
-- 95% first-attempt task completion targets are validated by moderated usability tests.
-- 100% privacy and predefined mutation tests are enforced with two-user integration cases.
-- Combined search/filter results for 1,000 accessible records are benchmarked within the 2-second target.
-- Critical custom-form cases verify field-specific feedback for every invalid required field.
+- Exercise browse/search/favorite/custom CRUD.
+- Plan creation, session/exercise reorder, and custom set/reps.
+- Start, log, add/remove, rest timer, incomplete save/resume/discard/finish.
+- Previous-performance display.
+- Calendar and chronological history.
+- Progress totals/PR/frequency.
+- Concurrent/double completion.
+- Mobile/desktop, keyboard, and dark/light flows.
 
-## Key Decisions
+Playwright is reserved for critical end-to-end flows rather than replacing lower-level domain tests.
 
-1. Use REST and Express because the feature is standard authenticated CRUD and filtering; GraphQL would add unnecessary schema/runtime complexity.
-2. Use an SQL ORM/query layer with migrations because ownership, uniqueness, filtering, and seed integrity need relational guarantees.
-3. Use separate Exercise and ExerciseFavorite entities because favorites must be private and independent per user.
-4. Use source and owner fields because predefined records can be seed-managed and custom records remain owner-restricted.
-5. Use fixed taxonomies because free-text equipment/difficulty values would undermine predictable filtering.
-6. Use separate positive sets/reps fields because range or free-text representations create ambiguous validation and future plan reuse.
-7. Require media for predefined exercises and allow custom exercises to omit it because curated data needs demonstrations while custom creation remains practical.
-8. Do not expose custom exercise existence to unrelated users, prefer 404 for detail access, and avoid leaking private metadata in errors or logs.
-9. Keep pagination in the API so mobile clients do not load all accessible exercises at once.
+## Milestones and Dependencies
 
-## Dependencies
+1. **Foundation**: monorepos, database, migrations, auth, shared validation/taxonomies, API envelope, test infrastructure.
+2. **Exercise Library**: seed/import data, browse/detail/search/filter, favorites, custom CRUD, previous-performance API shell.
+3. **Plan Builder**: plans, ordered sessions, template exercises, reorder operations, plan privacy.
+4. **Rotation Engine**: per-plan progress, start/next-session API, completion transaction, idempotency, state tests.
+5. **Workout Logging**: active attempt, exercise/set logs, rest timer, incomplete/resume/discard/complete, unit preference.
+6. **History and Integrity**: status-visible completed/in-progress/discarded snapshots, calendar/list/detail APIs, and edit/delete isolation tests.
+7. **Progress and Polish**: totals, volume, PR, frequency, charts, responsive/accessibility/performance checks.
 
-- Existing authentication and user session/JWT mechanism.
-- Fixed muscle, equipment, and difficulty taxonomy definitions.
-- Database migration and seed infrastructure.
-- Persistent theme preference support or a minimal feature-level preference store.
-- Environment configuration for database, authentication, and API base URL.
+The plan-builder depends on exercise records. Rotation depends on completed workout transactions and plan session identity. History depends on status-visible workout snapshots. Progress depends on completed set/history records.
 
-No external exercise-image service is required for MVP storage; `demoReference` may be a repository-provided URL or media identifier validated against allowed formats.
+## Requirement-to-Component/API/Test Traceability
+
+| Requirements | Frontend/API | Automated verification |
+|---|---|---|
+| FR-001–FR-011 exercises | ExerciseLibraryPage, ExerciseDetail, ExerciseForm, `/exercises`, `/favorites` | Unit taxonomy/filter; contract privacy; RTL browse/form; E2E search/favorites |
+| FR-012–FR-017 plans/templates | PlanList/PlanEditor, `/plans`, `/sessions`, `/exercises` | Integration ordering/CRUD; E2E plan builder; history immutability |
+| FR-018–FR-025 rotation | Next-session UI, `/plans/:id/next-session`, completion endpoint | Unit state rules; transaction concurrency tests; E2E three-session/multi-plan |
+| FR-026–FR-032 active workouts | ActiveWorkoutPage, rest timer, previous-performance panel | Unit set validation; integration draft/resume/discard; E2E logging |
+| FR-033–FR-035 history | HistoryPage/calendar/detail | Snapshot integration tests after edit/delete; E2E history |
+| FR-036–FR-038 dashboard/progress | AppShell/Dashboard/Progress | Unit aggregation; RTL; E2E totals/PR/frequency |
+| FR-039–FR-046 UX/security | Auth shell, shared error/draft/theme components | Auth/privacy contracts; accessibility; responsive; save-failure tests |
+| NFR-007 historical immutability | Snapshot repositories and completion transaction | Integration tests edit/delete live entities and reread history |
+| NFR-010 exactly-one completion | Idempotency key + plan/workout locks | Concurrent completion integration test; repeated request contract test |
+
+## Assumptions
+
+- Authentication and user preference providers are present or selected before data implementation.
+- PostgreSQL is available for production and a SQLite test database is sufficient for deterministic MVP tests.
+- The MVP uses one ordered-session cycle with an explicit next-session result and no fixed weekdays.
+- External exercise providers are optional and not a source of truth for privacy or historical snapshots.
+- Plan editing may affect future workouts, but active/incomplete workout snapshots remain unchanged and completed history is immutable.
+
+## Risks and Mitigations
+
+- **Concurrent completion**: mitigate with transaction locks, progress version, and idempotency uniqueness.
+- **Snapshot drift**: write immutable history fields in the completion transaction and forbid later updates.
+- **Authentication uncertainty**: isolate auth behind an adapter and document provider decisions before API implementation.
+- **External provider outage**: use local cached/seeded exercises and a circuit/fallback adapter.
+- **Mobile complexity**: implement reusable mobile components, test 320 px, and provide keyboard alternatives to dragging.
+- **Progress calculation drift**: centralize aggregation and test against fixture histories.
+- **Draft loss**: persist recoverable draft state locally/server-side and distinguish it clearly from saved completion.
+
+## Unresolved Decisions
+
+1. Authentication provider/session mechanism and account recovery flow.
+2. Final Prisma/Kysely choice and PostgreSQL/SQLite migration strategy.
+3. Optional local/shared icon asset strategy and predefined icon set.
+4. Pagination defaults and history/calendar export expectations.
 
 ## Complexity Tracking
 
-No constitution violations requiring exception.
-
-## Post-Design Constitution Re-check
-
-- React/TypeScript and Node.js/Express are used with modular feature folders.
-- PostgreSQL/SQLite relational persistence and server-side authorization preserve privacy and integrity.
-- REST contracts use consistent status codes and error payloads.
-- Predefined records remain read-only and custom exercises remain owner-scoped.
-- The design does not introduce workouts, weekdays, rotation, history, or analytics.
-- The implementation plan includes validation, loading/empty/error states, backend/frontend tests, and data-integrity integration coverage.
+No constitution exception is requested. The implementation is intentionally separated into domain modules and immutable completion snapshots to preserve historical truth and completion-based rotation.
