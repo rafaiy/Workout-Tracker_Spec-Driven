@@ -5,13 +5,13 @@
 
 ## Phase 1: Project Setup
 
-- [ ] T001 Create `backend/`, `frontend/`, and `shared/` project structures per `plan.md`.
-- [ ] T002 Initialize Node.js/Express/TypeScript backend scripts and dependencies.
-- [ ] T003 Initialize React/TypeScript frontend with React Router, TanStack Query, React Hook Form, Zod, and HTTP client dependencies.
-- [ ] T004 [P] Add backend Vitest, Supertest, and contract-test tooling.
-- [ ] T005 [P] Add frontend Vitest, React Testing Library, and Playwright tooling.
-- [ ] T006 [P] Configure backend/frontend TypeScript, ESLint, Prettier, and environment templates.
-- [ ] T007 Create shared taxonomy, icon, workout-state, and domain-type packages.
+- [x] T001 Create `backend/`, `frontend/`, and `shared/` project structures per `plan.md`.
+- [x] T002 Initialize Node.js/Express/TypeScript backend scripts and dependencies.
+- [x] T003 Initialize React/TypeScript frontend with React Router, TanStack Query, React Hook Form, Zod, and HTTP client dependencies.
+- [x] T004 [P] Add backend Vitest, Supertest, and contract-test tooling.
+- [x] T005 [P] Add frontend Vitest, React Testing Library, and Playwright tooling.
+- [x] T006 [P] Configure backend/frontend TypeScript, ESLint, Prettier, and environment templates.
+- [x] T007 Create shared taxonomy, icon, workout-state, and domain-type packages.
 
 ## Phase 2: Foundational Infrastructure
 
